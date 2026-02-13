@@ -94,16 +94,20 @@ var app = builder.Build();
 
 
 // Dev tools
-app.UseSwagger();
-app.UseSwaggerUI();
-
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 //for preventing cors
 app.UseCors("AllowFrontend");
+
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-
+// Map controllers (THIS exposes /api/questions)
+app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -111,7 +115,4 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
-app.MapGet("/", () => "QuestionTracker API is running on Render!");
-// Map controllers (THIS exposes /api/questions)
-app.MapControllers();
 app.Run();
