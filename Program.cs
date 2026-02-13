@@ -71,19 +71,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-    //for preventing cors
-    builder.Services.AddCors(options =>
-    {
-        options.AddPolicy("AllowFrontend",
-            policy =>
-            {
-                policy
-                    .WithOrigins("http://localhost:5173", "http://localhost:5174")
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials();
-            });
-    });
+//for preventing cors,  not secure, but fine for learning.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend",
+        policy =>
+        {
+            policy
+                .AllowAnyOrigin()
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+});
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
