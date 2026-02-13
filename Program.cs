@@ -92,34 +92,26 @@ var app = builder.Build();
 //     LeetCodeSeeder.SeedSql50(db);
 // }
 
-using (var scope = app.Services.CreateScope())
-{
-    try
-    {
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        db.Database.Migrate();
-        Console.WriteLine("Database migration applied successfully.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("Database migration failed:");
-        Console.WriteLine(ex);
-        throw; // crash app so Render shows real error
-    }
-}
 
-// ---- DEV / PROD TOOLS ----
+// Dev tools
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// ---- MIDDLEWARE ----
+//for preventing cors
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ---- HEALTH + ROUTES ----
-app.MapGet("/", () => "QuestionTracker API is running on Render!");
-app.MapControllers();
 
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
+
+app.MapGet("/", () => "QuestionTracker API is running on Render!");
+// Map controllers (THIS exposes /api/questions)
+app.MapControllers();
 app.Run();
