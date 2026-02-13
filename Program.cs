@@ -6,7 +6,8 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddScoped<EmailService>();
+// builder.Services.AddScoped<EmailService>();
+builder.Services.AddHttpClient<EmailService>();
 
 // Add controllers (THIS is required for your QuestionsController)
 builder.Services.AddControllers();
@@ -92,27 +93,34 @@ var app = builder.Build();
 //     LeetCodeSeeder.SeedSql50(db);
 // }
 
-
-// Dev tools
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        db.Database.Migrate();
+        Console.WriteLine("Database migration applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Database migration failed:");
+        Console.WriteLine(ex);
+        throw; // crash app so Render shows real error
+    }
 }
-//for preventing cors
-app.UseCors("AllowFrontend");
 
+// ---- DEV / PROD TOOLS ----
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// ---- MIDDLEWARE ----
+app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Map controllers (THIS exposes /api/questions)
+// ---- HEALTH + ROUTES ----
+app.MapGet("/", () => "QuestionTracker API is running on Render!");
 app.MapControllers();
-
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
-}
 
 app.Run();
