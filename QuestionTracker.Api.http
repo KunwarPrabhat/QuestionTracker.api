@@ -1,0 +1,6 @@
+@QuestionTracker.Api_HostAddress = http://localhost:5089
+
+GET {{QuestionTracker.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
