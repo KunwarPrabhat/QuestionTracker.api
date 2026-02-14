@@ -1,46 +1,49 @@
-using MailKit.Net.Smtp;
-using MimeKit;
-using MailKit.Security; // <--- ADD THIS NAMESPACE
+using System.Text;
+using System.Text.Json;
 
 public class EmailService
 {
     private readonly IConfiguration _config;
+    private readonly HttpClient _httpClient;
 
-    public EmailService(IConfiguration config)
+    public EmailService(IConfiguration config, HttpClient httpClient)
     {
         _config = config;
+        _httpClient = httpClient;
     }
 
     public async Task SendVerificationCode(string to, string code)
     {
-        var email = new MimeMessage();
-        email.From.Add(new MailboxAddress("Question Tracker", _config["Smtp:User"]));
-        email.To.Add(new MailboxAddress("", to));
-        email.Subject = "Your Verification Code";
+        var apiKey = _config["Brevo:ApiKey"];
+        var senderName = "Question Tracker";
+        var senderEmail = _config["Brevo:SenderEmail"]; // Must be your login email
 
-        email.Body = new TextPart("html")
+        var payload = new
         {
-            Text = $@"
+            sender = new { name = senderName, email = senderEmail },
+            to = new[] { new { email = to } },
+            subject = "Your Verification Code",
+            htmlContent = $@"
                 <h2>Your Verification Code</h2>
                 <h1>{code}</h1>
                 <p>Expires in 10 minutes.</p>"
         };
 
-        using var client = new SmtpClient();
-        
-        // SAFETY: Force IPv4 to prevent the "Network Unreachable" error
-        client.LocalDomain = "127.0.0.1";
+        var json = JsonSerializer.Serialize(payload);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        // CRITICAL CHANGE: Use Port 465 and SslOnConnect
-        // This skips the "upgrade" handshake that is timing out
-        await client.ConnectAsync(
-            _config["Smtp:Host"], 
-            465, 
-            SecureSocketOptions.SslOnConnect
-        );
-        
-        await client.AuthenticateAsync(_config["Smtp:User"], _config["Smtp:Pass"]);
-        await client.SendAsync(email);
-        await client.DisconnectAsync(true);
+        // Add the special Brevo header
+        if (!_httpClient.DefaultRequestHeaders.Contains("api-key"))
+        {
+            _httpClient.DefaultRequestHeaders.Add("api-key", apiKey);
+        }
+
+        var response = await _httpClient.PostAsync("https://api.brevo.com/v3/smtp/email", content);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Brevo API Failed: {error}");
+        }
     }
 }
