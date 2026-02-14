@@ -1,5 +1,6 @@
 using MailKit.Net.Smtp;
 using MimeKit;
+using MailKit.Security; // <--- ADD THIS NAMESPACE
 
 public class EmailService
 {
@@ -13,7 +14,6 @@ public class EmailService
     public async Task SendVerificationCode(string to, string code)
     {
         var email = new MimeMessage();
-        // IMPORTANT: The "From" email MUST be the email you used to sign up for Brevo
         email.From.Add(new MailboxAddress("Question Tracker", _config["Smtp:User"]));
         email.To.Add(new MailboxAddress("", to));
         email.Subject = "Your Verification Code";
@@ -28,11 +28,15 @@ public class EmailService
 
         using var client = new SmtpClient();
         
-        // Brevo works best on Port 587 with StartTls
+        // SAFETY: Force IPv4 to prevent the "Network Unreachable" error
+        client.LocalDomain = "127.0.0.1";
+
+        // CRITICAL CHANGE: Use Port 465 and SslOnConnect
+        // This skips the "upgrade" handshake that is timing out
         await client.ConnectAsync(
             _config["Smtp:Host"], 
-            int.Parse(_config["Smtp:Port"] ?? "587"), 
-            MailKit.Security.SecureSocketOptions.StartTls
+            465, 
+            SecureSocketOptions.SslOnConnect
         );
         
         await client.AuthenticateAsync(_config["Smtp:User"], _config["Smtp:Pass"]);
