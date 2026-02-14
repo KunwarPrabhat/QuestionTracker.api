@@ -1,53 +1,39 @@
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
+using MailKit.Net.Smtp; // IMPORTANT: Use MailKit, not System.Net.Mail
+using MimeKit;
 
 public class EmailService
 {
     private readonly IConfiguration _config;
-    private readonly HttpClient _httpClient;
 
-    public EmailService(IConfiguration config, HttpClient httpClient)
+    public EmailService(IConfiguration config)
     {
         _config = config;
-        _httpClient = httpClient;
     }
 
     public async Task SendVerificationCode(string to, string code)
     {
-        var apiKey = _config["RESEND_API_KEY"];
+        var email = new MimeMessage();
+        email.From.Add(new MailboxAddress("Question Tracker", _config["Smtp:User"]));
+        email.To.Add(new MailboxAddress("", to));
+        email.Subject = "Your Verification Code";
 
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", apiKey);
-
-        var body = new
+        email.Body = new TextPart("html")
         {
-            from = "Question Tracker <onboarding@resend.dev>", 
-            to = to,
-            subject = "Your Verification Code",
-            html = $@"
+            Text = $@"
                 <h2>Your Verification Code</h2>
-                <p>Your verification code is:</p>
                 <h1>{code}</h1>
-                <p>This code expires in 10 minutes.</p>
-            "
+                <p>Expires in 10 minutes.</p>"
         };
 
-        var content = new StringContent(
-            JsonSerializer.Serialize(body),
-            Encoding.UTF8,
-            "application/json"
-        );
-
-        var response = await _httpClient.PostAsync(
-            "https://api.resend.com/emails",
-            content
-        );
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Email sending failed: {error}");
-        }
+        using var client = new SmtpClient();
+        // connect to smtp.gmail.com on port 587
+        await client.ConnectAsync(_config["Smtp:Host"], _config.GetValue<int>("Smtp:Port"), MailKit.Security.SecureSocketOptions.StartTls);
+        
+        // authenticate
+        await client.AuthenticateAsync(_config["Smtp:User"], _config["Smtp:Pass"]);
+        
+        // send
+        await client.SendAsync(email);
+        await client.DisconnectAsync(true);
     }
 }
