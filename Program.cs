@@ -101,12 +101,14 @@ using (var scope = app.Services.CreateScope())
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         db.Database.Migrate();
         Console.WriteLine("Database migration applied successfully.");
+        LeetCodeSeeder.SeedSql50(db);
+
     }
     catch (Exception ex)
     {
         Console.WriteLine("Database migration failed:");
         Console.WriteLine(ex);
-        throw; // crash app so Render shows real error
+        throw; 
     }
 }
 
