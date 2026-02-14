@@ -1,4 +1,4 @@
-using MailKit.Net.Smtp; // IMPORTANT: Use MailKit, not System.Net.Mail
+using MailKit.Net.Smtp;
 using MimeKit;
 
 public class EmailService
@@ -13,6 +13,7 @@ public class EmailService
     public async Task SendVerificationCode(string to, string code)
     {
         var email = new MimeMessage();
+        // IMPORTANT: The "From" email MUST be the email you used to sign up for Brevo
         email.From.Add(new MailboxAddress("Question Tracker", _config["Smtp:User"]));
         email.To.Add(new MailboxAddress("", to));
         email.Subject = "Your Verification Code";
@@ -26,13 +27,15 @@ public class EmailService
         };
 
         using var client = new SmtpClient();
-        // connect to smtp.gmail.com on port 587
-        await client.ConnectAsync(_config["Smtp:Host"], _config.GetValue<int>("Smtp:Port"), MailKit.Security.SecureSocketOptions.StartTls);
         
-        // authenticate
+        // Brevo works best on Port 587 with StartTls
+        await client.ConnectAsync(
+            _config["Smtp:Host"], 
+            int.Parse(_config["Smtp:Port"] ?? "587"), 
+            MailKit.Security.SecureSocketOptions.StartTls
+        );
+        
         await client.AuthenticateAsync(_config["Smtp:User"], _config["Smtp:Pass"]);
-        
-        // send
         await client.SendAsync(email);
         await client.DisconnectAsync(true);
     }
