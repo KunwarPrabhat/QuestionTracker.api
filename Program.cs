@@ -6,10 +6,10 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// builder.Services.AddScoped<EmailService>();
-builder.Services.AddTransient<EmailService>();
-// builder.Services.AddHttpClient<EmailService>();
 
+// builder.Services.AddTransient<EmailService>();
+
+builder.Services.AddHttpClient<EmailService>();
 // Add controllers (THIS is required for your QuestionsController)
 builder.Services.AddControllers();
 // (no email service registered)
